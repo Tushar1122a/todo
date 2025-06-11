@@ -5,32 +5,35 @@ import os
 
 app = Flask(__name__)
 
-# ✅ Use Mongo URI from environment variable (works on Railway)
-MONGO_URI = os.environ.get("MONGO_URI", "mongodb://localhost:27017")
+# ✅ Get MongoDB URI from Railway environment variable
+MONGO_URI = os.getenv("MONGO_URI")
+if not MONGO_URI:
+    raise Exception("MONGO_URI not found in environment variables.")
+
+# ✅ Create Mongo client
 client = MongoClient(MONGO_URI)
+db = client["flask_database"]  # Name of your database
+todos = db["todos"]            # Name of your collection
 
-# Connect to database and collection
-db = client.flask_database
-todos = db.todos
-
-# Home Route - Get and Post
-@app.route("/", methods=("GET", "POST"))
+# ✅ Home route — add & display todos
+@app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        content = request.form["content"]
-        degree = request.form["degree"]
-        todos.insert_one({"content": content, "degree": degree})
+        content = request.form.get("content")
+        degree = request.form.get("degree")
+        if content and degree:
+            todos.insert_one({"content": content, "degree": degree})
         return redirect(url_for("index"))
-    all_todos = todos.find()
+    all_todos = list(todos.find())
     return render_template("index.html", todos=all_todos)
 
-# Delete Route
+# ✅ Delete route
 @app.post("/<id>/delete/")
 def delete(id):
     todos.delete_one({"_id": ObjectId(id)})
     return redirect(url_for("index"))
 
-# Run app
+# ✅ Run app (host/port for Railway)
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  # allow Railway to assign a port
-    app.run(host="0.0.0.0", port=port, debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
