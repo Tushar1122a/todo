@@ -20,8 +20,8 @@ try:
         todos_collection = db["todos"]
         use_mongo = True
 except Exception as e:
-    print("⚠️ MongoDB unavailable, falling back to JSON database.")
-    use_mongo = False
+    raise Exception("❌ MongoDB connection failed and Railway cannot use local files. Please fix MONGO_URI.")
+
 
 
 DATA_FILE = "data.json"
@@ -82,7 +82,5 @@ def delete(id):
     return redirect(url_for("index"))
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  # required by Railway
-    app.run(host="0.0.0.0", port=port, debug=True)
-
-
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
