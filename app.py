@@ -7,35 +7,33 @@ from uuid import uuid4
 app = Flask(__name__)
 app.secret_key = "your-secret-key"
 
-
-MONGO_URI = os.getenv("MONGO_URI")
 use_mongo = False
 todos_collection = None
 
 try:
-    if MONGO_URI:
-        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=2000)
-        client.server_info()  # Trigger connection attempt
-        db = client["flask_database"]
-        todos_collection = db["todos"]
-        use_mongo = True
-except Exception as e:
-    raise Exception("❌ MongoDB connection failed and Railway cannot use local files. Please fix MONGO_URI.")
+    # Try connecting to local MongoDB
+    client = MongoClient("mongodb://localhost:27017", serverSelectionTimeoutMS=2000)
+    client.server_info()  # trigger connection
+    db = client["flask_database"]
+    todos_collection = db["todos"]
+    use_mongo = True
+    print("[✓] Connected to local MongoDB.")
+except Exception:
+    print("[Warning] MongoDB not available. Falling back to JSON file.")
+    use_mongo = False
 
-
-
+# JSON file fallback
 DATA_FILE = "data.json"
 
 def load_json():
     if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r") as f:
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     return []
 
 def save_json(data):
-    with open(DATA_FILE, "w") as f:
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
-
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -61,14 +59,12 @@ def index():
 
     if use_mongo:
         todos = list(todos_collection.find())
-        
         for todo in todos:
             todo["id"] = str(todo["_id"])
     else:
         todos = load_json()
 
     return render_template("index.html", todos=todos)
-
 
 @app.post("/<id>/delete/")
 def delete(id):
@@ -83,4 +79,4 @@ def delete(id):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=True)
